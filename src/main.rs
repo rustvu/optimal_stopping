@@ -8,10 +8,10 @@ const N_EXPERIMENTS: usize = 100_000;
 
 /// Suitors are represented as random integer numbers (full range)
 /// where a higher numbers mean more desirable suitor
-fn generate_suitors() -> [i32; N_SUITORS] {
+fn summon_suitors() -> [i32; N_SUITORS] {
     let mut suitors = [0; N_SUITORS];
     for i in 0..N_SUITORS {
-        suitors[i] = fastrand::i32(..);
+        suitors[i] = fastrand::i32(50..150); // IQ?
     }
     suitors
 }
@@ -36,28 +36,29 @@ fn pick_a_prince(suitors: [i32; N_SUITORS], n_explore: usize) -> i32 {
 }
 
 fn main() {
-    let mut optimum = (0, 0); // (score, explore)
-    let mut scores = [0; N_SUITORS];
+    let mut optimum = (0, 0.0); // (explore, score)
+    let mut scores = [0.0; N_SUITORS];
 
     for n_explore in 0..N_SUITORS {
-        let mut score = 0;
+        let mut score = 0.0;
         for _ in 0..N_EXPERIMENTS {
-            let suitors = generate_suitors();
-            let best_suitor = *suitors.iter().max().unwrap();
+            let suitors = summon_suitors();
+            let best_suitor = suitors.into_iter().max().unwrap();
             let prince = pick_a_prince(suitors, n_explore);
 
             // The goal is to pick the absolute best suitor
             if prince == best_suitor {
-                score += 1;
+                score += 1.0;
             }
         }
+        score = score / N_EXPERIMENTS as f64;
         scores[n_explore] = score;
-        if score > optimum.0 {
-            optimum = (score, n_explore);
+        if score > optimum.1 {
+            optimum = (n_explore, score);
         }
     }
 
-    println!("Optimal exploration threshold: {}", optimum.1);
+    println!("Optimal exploration threshold: {}", optimum.0);
 
     // Optional Plotting
     #[cfg(feature = "plotly")]
@@ -72,7 +73,7 @@ fn main() {
         let trace = Scatter::new((0..scores.len()).collect(), Vec::from(scores));
         plot.add_trace(trace);
 
-        let optimum_marker = Scatter::new(vec![optimum.1], vec![optimum.0]).mode(Mode::Markers);
+        let optimum_marker = Scatter::new(vec![optimum.0], vec![optimum.1]).mode(Mode::Markers);
         plot.add_trace(optimum_marker);
 
         let layout = Layout::new()
@@ -83,16 +84,16 @@ fn main() {
             .x_axis(
                 Axis::new()
                     .title("n_explore")
-                    .tick_values(vec![optimum.1 as f64])
-                    .tick_text(vec![optimum.1.to_string()]),
+                    .tick_values(vec![optimum.0 as f64])
+                    .tick_text(vec![optimum.0.to_string()]),
             )
             .y_axis(Axis::new().title("score"))
             .shapes(vec![Shape::new()
                 .shape_type(ShapeType::Line)
-                .x0(optimum.1 as f64)
-                .x1(optimum.1 as f64)
+                .x0(optimum.0 as f64)
+                .x1(optimum.0 as f64)
                 .y0(0.0)
-                .y1(optimum.0 as f64)
+                .y1(optimum.1 as f64)
                 .line(ShapeLine::new().color("red"))]);
         plot.set_layout(layout);
         plot.show();
